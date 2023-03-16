@@ -486,9 +486,8 @@ abstract class DioMixin implements Dio {
 
     // Add request interceptors to request flow
     for (final interceptor in interceptors) {
-      final fun = interceptor is QueuedInterceptor
-          ? interceptor._handleRequest
-          : interceptor.onRequest;
+      final fun =
+          interceptor is QueuedInterceptor ? interceptor._handleRequest : interceptor.onRequest;
       future = future.then(requestInterceptorWrapper(fun));
     }
 
@@ -499,9 +498,7 @@ abstract class DioMixin implements Dio {
         RequestInterceptorHandler handler,
       ) {
         requestOptions = reqOpt;
-        _dispatchRequest<T>(reqOpt)
-            .then((value) => handler.resolve(value, true))
-            .catchError((e) {
+        _dispatchRequest<T>(reqOpt).then((value) => handler.resolve(value, true)).catchError((e) {
           handler.reject(e as DioError, true);
         });
       }),
@@ -509,17 +506,14 @@ abstract class DioMixin implements Dio {
 
     // Add response interceptors to request flow
     for (final interceptor in interceptors) {
-      final fun = interceptor is QueuedInterceptor
-          ? interceptor._handleResponse
-          : interceptor.onResponse;
+      final fun =
+          interceptor is QueuedInterceptor ? interceptor._handleResponse : interceptor.onResponse;
       future = future.then(responseInterceptorWrapper(fun));
     }
 
     // Add error handlers to request flow
     for (final interceptor in interceptors) {
-      final fun = interceptor is QueuedInterceptor
-          ? interceptor._handleError
-          : interceptor.onError;
+      final fun = interceptor is QueuedInterceptor ? interceptor._handleError : interceptor.onError;
       future = future.catchError(errorInterceptorWrapper(fun));
     }
     // Normalize errors, we convert error to the DioError.
@@ -561,6 +555,7 @@ abstract class DioMixin implements Dio {
         statusCode: responseBody.statusCode,
         statusMessage: responseBody.statusMessage,
         extra: responseBody.extra,
+        elapsedTime: responseBody.elapsedTime,
       );
       final statusOk = reqOpt.validateStatus(responseBody.statusCode);
       if (statusOk || reqOpt.receiveDataWhenStatusError == true) {
@@ -599,8 +594,7 @@ abstract class DioMixin implements Dio {
         r' ABCDEFGHIJKLMNOPQRSTUVWXYZ   ^_'
         r'`abcdefghijklmnopqrstuvwxyz | ~ ';
     for (final int codeUnit in token.codeUnits) {
-      if (codeUnit >= validChars.length ||
-          validChars.codeUnitAt(codeUnit) == 0x20) {
+      if (codeUnit >= validChars.length || validChars.codeUnitAt(codeUnit) == 0x20) {
         return false;
       }
     }
@@ -633,8 +627,7 @@ abstract class DioMixin implements Dio {
           return false;
         });
       } else if (data is FormData) {
-        options.headers[Headers.contentTypeHeader] =
-            '${Headers.multipartFormDataContentType}; '
+        options.headers[Headers.contentTypeHeader] = '${Headers.multipartFormDataContentType}; '
             'boundary=${data.boundary}';
         stream = data.finalize();
         length = data.length;

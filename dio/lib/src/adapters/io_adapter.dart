@@ -52,6 +52,8 @@ class IOHttpClientAdapter implements HttpClientAdapter {
     final httpClient = _configHttpClient(cancelFuture, options.connectTimeout);
     final reqFuture = httpClient.openUrl(options.method, options.uri);
 
+    final stopwatch = Stopwatch()..start();
+
     late HttpClientRequest request;
     try {
       final connectionTimeout = options.connectTimeout;
@@ -87,9 +89,14 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       );
     }
 
+    stopwatch.stop();
+    final Duration connectionDuration = stopwatch.elapsed;
+
     request.followRedirects = options.followRedirects;
     request.maxRedirects = options.maxRedirects;
     request.persistentConnection = options.persistentConnection;
+
+    stopwatch.start();
 
     if (requestStream != null) {
       // Transform the request data.
@@ -110,7 +117,10 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       await future;
     }
 
-    final stopwatch = Stopwatch()..start();
+    stopwatch.stop();
+    final Duration sentDuration = stopwatch.elapsed;
+
+    stopwatch.start();
     Future<HttpClientResponse> future = request.close();
     final receiveTimeout = options.receiveTimeout;
     if (receiveTimeout != null) {
@@ -145,13 +155,15 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       }
     }
 
+    late final Duration receiveDuration;
+
     final stream = responseStream.transform<Uint8List>(
       StreamTransformer.fromHandlers(
         handleData: (data, sink) {
           stopwatch.stop();
-          final duration = stopwatch.elapsed;
+          receiveDuration = stopwatch.elapsed;
           final receiveTimeout = options.receiveTimeout;
-          if (receiveTimeout != null && duration > receiveTimeout) {
+          if (receiveTimeout != null && receiveDuration > receiveTimeout) {
             sink.addError(
               DioError.receiveTimeout(
                 timeout: receiveTimeout,
@@ -180,6 +192,11 @@ class IOHttpClientAdapter implements HttpClientAdapter {
           .map((e) => RedirectRecord(e.statusCode, e.method, e.location))
           .toList(),
       statusMessage: responseStream.reasonPhrase,
+      elapsedTime: {
+        'connectionDuration': connectionDuration,
+        'sentDuration': sentDuration,
+        'receiveDuration': receiveDuration,
+      }
     );
   }
 

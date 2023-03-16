@@ -4,8 +4,7 @@ import 'dart:typed_data';
 import 'options.dart';
 import 'redirect_record.dart';
 
-import 'adapters/io_adapter.dart'
-    if (dart.library.html) 'adapters/browser_adapter.dart' as adapter;
+import 'adapters/io_adapter.dart' if (dart.library.html) 'adapters/browser_adapter.dart' as adapter;
 
 /// [HttpAdapter] is a bridge between [Dio] and [HttpClient].
 ///
@@ -61,6 +60,7 @@ class ResponseBody {
     this.statusMessage,
     this.isRedirect = false,
     this.redirects,
+    this.elapsedTime = const {},
   });
 
   /// The response stream.
@@ -84,12 +84,16 @@ class ResponseBody {
 
   Map<String, dynamic> extra = {};
 
+  /// Contain elapsed time for connection, sent, and receive
+  Map<String, Duration> elapsedTime;
+
   ResponseBody.fromString(
     String text,
     this.statusCode, {
     this.headers = const {},
     this.statusMessage,
     this.isRedirect = false,
+    this.elapsedTime = const {},
   }) : stream = Stream.value(Uint8List.fromList(utf8.encode(text)));
 
   ResponseBody.fromBytes(
@@ -98,5 +102,6 @@ class ResponseBody {
     this.headers = const {},
     this.statusMessage,
     this.isRedirect = false,
+    this.elapsedTime = const {},
   }) : stream = Stream.value(Uint8List.fromList(bytes));
 }

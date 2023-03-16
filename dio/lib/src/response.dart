@@ -13,6 +13,7 @@ class Response<T> {
     this.isRedirect = false,
     this.redirects = const [],
     this.extra = const {},
+    this.elapsedTime = const {},
     Headers? headers,
   }) : headers = headers ?? Headers();
 
@@ -45,6 +46,9 @@ class Response<T> {
 
   /// Custom fields that are constructed in the [RequestOptions].
   Map<String, dynamic> extra;
+
+  /// Contain elapsed time for connection, sent, and receive
+  Map<String, Duration> elapsedTime;
 
   /// Response headers.
   Headers headers;
