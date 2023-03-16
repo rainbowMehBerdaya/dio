@@ -155,13 +155,11 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       }
     }
 
-    late final Duration receiveDuration;
-
     final stream = responseStream.transform<Uint8List>(
       StreamTransformer.fromHandlers(
         handleData: (data, sink) {
           stopwatch.stop();
-          receiveDuration = stopwatch.elapsed;
+          final Duration receiveDuration = stopwatch.elapsed;
           final receiveTimeout = options.receiveTimeout;
           if (receiveTimeout != null && receiveDuration > receiveTimeout) {
             sink.addError(
@@ -195,7 +193,6 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       elapsedTime: {
         'connectionDuration': connectionDuration,
         'sentDuration': sentDuration,
-        'receiveDuration': receiveDuration,
       }
     );
   }
