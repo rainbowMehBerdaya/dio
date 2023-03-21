@@ -135,6 +135,7 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       );
     }
 
+    // FIRST BYTE RECEIVE
     final responseStream = await future;
 
     if (validateCertificate != null) {
@@ -155,6 +156,7 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       }
     }
 
+    // FIRST BYTE RECEIVE + CONTENT DOWNLOAD DONE
     final stream = responseStream.transform<Uint8List>(
       StreamTransformer.fromHandlers(
         handleData: (data, sink) {

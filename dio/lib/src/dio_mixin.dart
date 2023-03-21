@@ -539,6 +539,8 @@ abstract class DioMixin implements Dio {
     ResponseBody responseBody;
     try {
       final stream = await _transformData(reqOpt);
+
+      final stopwatch = Stopwatch()..start();
       responseBody = await httpClientAdapter.fetch(
         reqOpt,
         stream,
@@ -555,7 +557,6 @@ abstract class DioMixin implements Dio {
         statusCode: responseBody.statusCode,
         statusMessage: responseBody.statusMessage,
         extra: responseBody.extra,
-        elapsedTime: responseBody.elapsedTime,
       );
       final statusOk = reqOpt.validateStatus(responseBody.statusCode);
       if (statusOk || reqOpt.receiveDataWhenStatusError == true) {
@@ -563,6 +564,15 @@ abstract class DioMixin implements Dio {
       } else {
         await responseBody.stream.listen(null).cancel();
       }
+
+      stopwatch.stop();
+      // THERE IS DIFFERENT IN SMALL MILLISECONDS BETWEEN HERE AND IO ADAPTER STREAM STOPWATCH
+      // UNDER NO THROTTLING CONDITION
+      final Duration receiveDuration = stopwatch.elapsed;
+      responseBody.elapsedTime['receiveDuration'] = receiveDuration;
+
+      ret.elapsedTime = responseBody.elapsedTime;
+
       checkCancelled(cancelToken);
       if (statusOk) {
         return ret;
