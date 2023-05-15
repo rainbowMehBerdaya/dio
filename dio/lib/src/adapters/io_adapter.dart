@@ -3,14 +3,19 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../adapter.dart';
-import '../dio_error.dart';
+import '../dio_exception.dart';
 import '../options.dart';
 import '../redirect_record.dart';
 
 @Deprecated('Use IOHttpClientAdapter instead. This will be removed in 6.0.0')
 typedef DefaultHttpClientAdapter = IOHttpClientAdapter;
 
+@Deprecated('Use CreateHttpClient instead. This will be removed in 6.0.0')
 typedef OnHttpClientCreate = HttpClient? Function(HttpClient client);
+
+/// Can be used to provide a custom [HttpClient] for Dio.
+typedef CreateHttpClient = HttpClient Function();
+
 typedef ValidateCertificate = bool Function(
   X509Certificate? certificate,
   String host,
@@ -21,10 +26,21 @@ HttpClientAdapter createAdapter() => IOHttpClientAdapter();
 
 /// The default [HttpClientAdapter] for native platforms.
 class IOHttpClientAdapter implements HttpClientAdapter {
-  /// [Dio] will create HttpClient when it is needed.
-  /// If [onHttpClientCreate] is provided, [Dio] will call
-  /// it when a HttpClient created.
+  IOHttpClientAdapter({
+    @Deprecated('Use createHttpClient instead. This will be removed in 6.0.0')
+        this.onHttpClientCreate,
+    this.createHttpClient,
+    this.validateCertificate,
+  });
+
+  /// [Dio] will create [HttpClient] when it is needed. If [onHttpClientCreate]
+  /// has provided, [Dio] will call it when a [HttpClient] created.
+  @Deprecated('Use createHttpClient instead. This will be removed in 6.0.0')
   OnHttpClientCreate? onHttpClientCreate;
+
+  /// When this callback is set, [Dio] will call it every
+  /// time it needs a [HttpClient].
+  CreateHttpClient? createHttpClient;
 
   /// Allows the user to decide if the response certificate is good.
   /// If this function is missing, then the certificate is allowed.
@@ -34,7 +50,7 @@ class IOHttpClientAdapter implements HttpClientAdapter {
   /// [validateCertificate] evaluates the leaf certificate.
   ValidateCertificate? validateCertificate;
 
-  HttpClient? _defaultHttpClient;
+  HttpClient? _cachedHttpClient;
 
   bool _closed = false;
 
@@ -61,7 +77,7 @@ class IOHttpClientAdapter implements HttpClientAdapter {
         request = await reqFuture.timeout(
           connectionTimeout,
           onTimeout: () {
-            throw DioError.connectionTimeout(
+            throw DioException.connectionTimeout(
               requestOptions: options,
               timeout: connectionTimeout,
             );
@@ -75,17 +91,16 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       options.headers.forEach((k, v) {
         if (v != null) request.headers.set(k, v);
       });
-    } on SocketException catch (e, stackTrace) {
+    } on SocketException catch (e) {
       if (!e.message.contains('timed out')) {
         rethrow;
       }
-      throw DioError.connectionTimeout(
+      throw DioException.connectionTimeout(
         requestOptions: options,
         timeout: options.connectTimeout ??
             httpClient.connectionTimeout ??
             Duration.zero,
         error: e,
-        stackTrace: stackTrace,
       );
     }
 
@@ -107,7 +122,7 @@ class IOHttpClientAdapter implements HttpClientAdapter {
           sendTimeout,
           onTimeout: () {
             request.abort();
-            throw DioError.sendTimeout(
+            throw DioException.sendTimeout(
               timeout: sendTimeout,
               requestOptions: options,
             );
@@ -127,7 +142,7 @@ class IOHttpClientAdapter implements HttpClientAdapter {
       future = future.timeout(
         receiveTimeout,
         onTimeout: () {
-          throw DioError.receiveTimeout(
+          throw DioException.receiveTimeout(
             timeout: receiveTimeout,
             requestOptions: options,
           );
@@ -147,9 +162,9 @@ class IOHttpClientAdapter implements HttpClientAdapter {
         port,
       );
       if (!isCertApproved) {
-        throw DioError(
+        throw DioException(
           requestOptions: options,
-          type: DioErrorType.badCertificate,
+          type: DioExceptionType.badCertificate,
           error: responseStream.certificate,
           message: 'The certificate of the response is not approved.',
         );
@@ -165,7 +180,7 @@ class IOHttpClientAdapter implements HttpClientAdapter {
           final receiveTimeout = options.receiveTimeout;
           if (receiveTimeout != null && receiveDuration > receiveTimeout) {
             sink.addError(
-              DioError.receiveTimeout(
+              DioException.receiveTimeout(
                 timeout: receiveTimeout,
                 requestOptions: options,
               ),
@@ -203,27 +218,28 @@ class IOHttpClientAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
     Duration? connectionTimeout,
   ) {
-    HttpClient client = onHttpClientCreate?.call(HttpClient()) ?? HttpClient();
     if (cancelFuture != null) {
+      final client = _createHttpClient();
       client.userAgent = null;
       client.idleTimeout = Duration(seconds: 0);
       cancelFuture.whenComplete(() => client.close(force: true));
       return client..connectionTimeout = connectionTimeout;
     }
-    if (_defaultHttpClient == null) {
-      client.idleTimeout = Duration(seconds: 3);
-      if (onHttpClientCreate?.call(client) != null) {
-        client = onHttpClientCreate!(client)!;
-      }
-      client.connectionTimeout = connectionTimeout;
-      _defaultHttpClient = client;
-    }
-    return _defaultHttpClient!..connectionTimeout = connectionTimeout;
+    return (_cachedHttpClient ??= _createHttpClient())
+      ..connectionTimeout = connectionTimeout;
   }
 
   @override
   void close({bool force = false}) {
     _closed = true;
-    _defaultHttpClient?.close(force: force);
+    _cachedHttpClient?.close(force: force);
+  }
+
+  HttpClient _createHttpClient() {
+    if (createHttpClient != null) {
+      return createHttpClient!();
+    }
+    final client = HttpClient()..idleTimeout = Duration(seconds: 3);
+    return onHttpClientCreate?.call(client) ?? client;
   }
 }

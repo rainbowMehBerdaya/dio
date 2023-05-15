@@ -1,4 +1,3 @@
-@TestOn('vm')
 import 'dart:async';
 import 'dart:io';
 
@@ -6,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:test/test.dart';
 
 import 'mock/adapters.dart';
+import 'utils.dart';
 
 void main() {
   test('test headers', () {
@@ -38,16 +38,20 @@ void main() {
     expect(headers1.map.isEmpty, isTrue);
   });
 
-  test(
-    'send with an invalid URL',
-    () async {
-      await expectLater(
-        Dio().get('http://http.invalid'),
-        throwsA((e) => e is DioError && e.error is SocketException),
-      );
-    },
-    testOn: 'vm',
-  );
+  test('send with an invalid URL', () async {
+    await expectLater(
+      Dio().get('http://http.invalid'),
+      throwsA(allOf([
+        isA<DioException>(),
+        (DioException e) =>
+            e.type ==
+            (isWeb
+                ? DioExceptionType.connectionError
+                : DioExceptionType.unknown),
+        if (!isWeb) (DioException e) => e.error is SocketException,
+      ])),
+    );
+  });
 
   test('cancellation', () async {
     final dio = Dio()
@@ -61,7 +65,7 @@ void main() {
 
     await expectLater(
       dio.get('/test-timeout', cancelToken: token),
-      throwsA((e) => e is DioError && CancelToken.isCancel(e)),
+      throwsA((e) => e is DioException && CancelToken.isCancel(e)),
     );
   });
 
@@ -73,8 +77,8 @@ void main() {
       dio.get('/401'),
       throwsA(
         (e) =>
-            e is DioError &&
-            e.type == DioErrorType.badResponse &&
+            e is DioException &&
+            e.type == DioExceptionType.badResponse &&
             e.response!.statusCode == 401,
       ),
     );
@@ -83,5 +87,18 @@ void main() {
       options: Options(validateStatus: (status) => true),
     );
     expect(r.statusCode, 401);
+  });
+
+  test('post map', () async {
+    final dio = Dio()
+      ..options.baseUrl = EchoAdapter.mockBase
+      ..httpClientAdapter = EchoAdapter();
+
+    final response = await dio.post(
+      '/post',
+      data: {'a': 1, 'b': 2, 'c': 3},
+    );
+    expect(response.data, '{"a":1,"b":2,"c":3}');
+    expect(response.statusCode, 200);
   });
 }

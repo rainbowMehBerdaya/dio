@@ -32,8 +32,8 @@ timeout, and custom adapters etc.
       * [LogInterceptor](#loginterceptor)
       * [Custom Interceptor](#custom-interceptor)
   * [Handling Errors](#handling-errors)
-    * [DioError](#dioerror)
-    * [DioErrorType](#dioerrortype)
+    * [DioException](#dioexception)
+    * [DioExceptionType](#dioexceptiontype)
   * [Using application/x-www-form-urlencoded format](#using-applicationx-www-form-urlencoded-format)
   * [Sending FormData](#sending-formdata)
     * [Multiple files upload](#multiple-files-upload)
@@ -47,6 +47,7 @@ timeout, and custom adapters etc.
   * [HTTP/2 support](#http2-support)
   * [Cancellation](#cancellation)
   * [Extends Dio class](#extends-dio-class)
+  * [Cross-Origin Resource Sharing on Web (CORS)](#cross-origin-resource-sharing-on-web--cors-)
 <!-- TOC -->
 </details>
 
@@ -99,7 +100,7 @@ void getHttp() async {
 | [native_dio_adapter](https://github.com/cfug/dio/blob/main/plugins/native_dio_adapter)                 | [![Pub](https://img.shields.io/pub/v/native_dio_adapter.svg)](https://pub.dev/packages/native_dio_adapter)                   | An adapter for Dio which makes use of cupertino_http and cronet_http to delegate HTTP requests to the native platform. |
 | [dio_smart_retry](https://github.com/rodion-m/dio_smart_retry)                                         | [![Pub](https://img.shields.io/pub/v/dio_smart_retry.svg)](https://pub.dev/packages/dio_smart_retry)                         | Flexible retry library for Dio                                                                                         |
 | [http_certificate_pinning](https://github.com/diefferson/http_certificate_pinning)                     | [![Pub](https://img.shields.io/pub/v/http_certificate_pinning.svg)](https://pub.dev/packages/http_certificate_pinning)       | Https Certificate pinning for Flutter                                                                                  |
-| [curl_logger_dio_interceptor](https://github.com/OwnWeb/curl_logger_dio_interceptor)                   | [![Pub](https://img.shields.io/pub/v/curl_logger_dio_interceptor.svg)](https://pub.dev/packages/curl_logger_dio_interceptor) | A Flutter curl-command generator for Dio.                                                                              |
+| [dio_intercept_to_curl](https://github.com/blackflamedigital/dio_intercept_to_curl)                   | [![Pub](https://img.shields.io/pub/v/dio_intercept_to_curl.svg)](https://pub.dev/packages/dio_intercept_to_curl) | A Flutter curl-command generator for Dio.                                                                              |
 | [dio_cache_interceptor](https://github.com/llfbandit/dio_cache_interceptor)                            | [![Pub](https://img.shields.io/pub/v/dio_cache_interceptor.svg)](https://pub.dev/packages/dio_cache_interceptor)             | Dio HTTP cache interceptor with multiple stores respecting HTTP directives (or not)                                    |
 | [dio_http_cache](https://github.com/hurshi/dio-http-cache)                                             | [![Pub](https://img.shields.io/pub/v/dio_http_cache.svg)](https://pub.dev/packages/dio_http_cache)                           | A simple cache library for Dio like Rxcache in Android                                                                 |
 | [pretty_dio_logger](https://github.com/Milad-Akarie/pretty_dio_logger)                                 | [![Pub](https://img.shields.io/pub/v/pretty_dio_logger.svg)](https://pub.dev/packages/pretty_dio_logger)                     | Pretty Dio logger is a Dio interceptor that logs network calls in a pretty, easy to read format.                       |
@@ -303,7 +304,7 @@ Map<String, dynamic>? headers;
 Duration? connectTimeout;
 
 /// Whenever more than [receiveTimeout] passes between two events from response stream,
-/// [Dio] will throw the [DioError] with [DioErrorType.RECEIVE_TIMEOUT].
+/// [Dio] will throw the [DioException] with [DioExceptionType.RECEIVE_TIMEOUT].
 /// Note: This is not the receiving time limitation.
 Duration? receiveTimeout;
 
@@ -420,16 +421,16 @@ dio.interceptors.add(
       // If you want to resolve the request with custom data,
       // you can resolve a `Response` using `handler.resolve(response)`.
       // If you want to reject the request with a error message,
-      // you can reject with a `DioError` using `handler.reject(dioError)`.
+      // you can reject with a `DioException` using `handler.reject(dioError)`.
       return handler.next(options);
     },
     onResponse: (Response response, ResponseInterceptorHandler handler) {
       // Do something with response data.
       // If you want to reject the request with a error message,
-      // you can reject a `DioError` object using `handler.reject(dioError)`.
+      // you can reject a `DioException` object using `handler.reject(dioError)`.
       return handler.next(response);
     },
-    onError: (DioError e, ErrorInterceptorHandler handler) {
+    onError: (DioException e, ErrorInterceptorHandler handler) {
       // Do something with response error.
       // If you want to resolve the request with some custom data,
       // you can resolve a `Response` object using `handler.resolve(response)`.
@@ -457,7 +458,7 @@ class CustomInterceptors extends Interceptor {
   }
 
   @override
-  Future onError(DioError err, ErrorInterceptorHandler handler) {
+  Future onError(DioException err, ErrorInterceptorHandler handler) async {
     print('ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
     super.onError(err, handler);
   }
@@ -506,13 +507,15 @@ For the complete code see [here](../example/lib/queued_interceptor_crsftoken.dar
 
 #### LogInterceptor
 
-You can apply the `LogInterceptor` to log requests and responses automatically:
+You can apply the `LogInterceptor` to log requests and responses automatically in the DEBUG mode:
 
 ```dart
 dio.interceptors.add(LogInterceptor(responseBody: false)); // Do not output responses body.
 ```
 
-Note: `LogInterceptor` should be the last to add since the interceptors are FIFO.
+**Note:** `LogInterceptor` should be the last to add since the interceptors are FIFO.
+
+**Note:** Logs will only be printed in the DEBUG mode (when the assertion is enabled).
 
 #### Custom Interceptor
 
@@ -522,13 +525,13 @@ There is an example that implementing a simple cache policy:
 
 ## Handling Errors
 
-When an error occurs, Dio will wrap the `Error/Exception` to a `DioError`:
+When an error occurs, Dio will wrap the `Error/Exception` to a `DioException`:
 
 ```dart
 try {
   // 404
   await dio.get('https://api.pub.dev/not-exist');
-} on DioError catch (e) {
+} on DioException catch (e) {
   // The request was made and the server responded with a status code
   // that falls out of the range of 2xx and is also not 304.
   if (e.response != null) {
@@ -543,7 +546,7 @@ try {
 }
 ```
 
-### DioError
+### DioException
 
 ```dart
 /// The request info for the request that throws exception.
@@ -553,24 +556,24 @@ RequestOptions requestOptions;
 /// HTTP server, for example, occurring a DNS error, network is not available.
 Response? response;
 
-/// The type of the current [DioError].
-DioErrorType type;
+/// The type of the current [DioException].
+DioExceptionType type;
 
 /// The original error/exception object;
-/// It's usually not null when `type` is [DioErrorType.unknown].
+/// It's usually not null when `type` is [DioExceptionType.unknown].
 Object? error;
 
 /// The stacktrace of the original error/exception object;
-/// It's usually not null when `type` is [DioErrorType.unknown].
+/// It's usually not null when `type` is [DioExceptionType.unknown].
 StackTrace? stackTrace;
 
-/// The error message that throws a [DioError].
+/// The error message that throws a [DioException].
 String? message;
 ```
 
-### DioErrorType
+### DioExceptionType
 
-See [the source code](lib/src/dio_error.dart).
+See [the source code](lib/src/dio_exception.dart).
 
 ## Using application/x-www-form-urlencoded format
 
@@ -742,20 +745,27 @@ for example:
 import 'package:dio/io.dart';
 
 void initAdapter() {
-  dio.httpClientAdapter = IOHttpClientAdapter()..onHttpClientCreate = (client) {
-    // Config the client.
-    client.findProxy = (uri) {
-      // Forward all request to proxy "localhost:8888".
-      return 'PROXY localhost:8888';
-    };
-    // You can also create a new HttpClient for Dio instead of returning,
-    // but a client must being returned here.
-    return client;
-  };
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    createHttpClient: () {
+      final client = HttpClient();
+      // Config the client.
+      client.findProxy = (uri) {
+        // Forward all request to proxy "localhost:8888".
+        // Be aware, the proxy should went through you running device,
+        // not the host platform.
+        return 'PROXY localhost:8888';
+      };
+      // You can also create a new HttpClient for Dio instead of returning,
+      // but a client must being returned here.
+      return client;
+    },
+  );
 }
 ```
 
 There is a complete example [here](../example/lib/proxy.dart).
+
+Web does not support to set proxy.
 
 ### HTTPS certificate verification
 
@@ -771,22 +781,25 @@ Unlike other methods, this one works with the certificate of the server itself.
 ```dart
 void initAdapter() {
   const String fingerprint = 'ee5ce1dfa7a53657c545c62b65802e4272878dabd65c0aadcf85783ebb0b4d5c';
-  dio.httpClientAdapter = IOHttpClientAdapter()..onHttpClientCreate = (_) {
-    // Don't trust any certificate just because their root cert is trusted.
-    final HttpClient client = HttpClient(context: SecurityContext(withTrustedRoots: false));
-    // You can test the intermediate / root cert here. We just ignore it.
-    client.badCertificateCallback = (cert, host, port) => true;
-    return client;
-  }..validateCertificate = (cert, host, port) {
-    // Check that the cert fingerprint matches the one we expect.
-    // We definitely require _some_ certificate.
-    if (cert == null) {
-      return false;
-    }
-    // Validate it any way you want. Here we only check that
-    // the fingerprint matches the OpenSSL SHA256.
-    return fingerprint == sha256.convert(cert.der).toString();
-  };
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    onHttpClientCreate = (_) {
+      // Don't trust any certificate just because their root cert is trusted.
+      final HttpClient client = HttpClient(context: SecurityContext(withTrustedRoots: false));
+      // You can test the intermediate / root cert here. We just ignore it.
+      client.badCertificateCallback = (cert, host, port) => true;
+      return client;
+    },
+    validateCertificate: (cert, host, port) {
+      // Check that the cert fingerprint matches the one we expect.
+      // We definitely require _some_ certificate.
+      if (cert == null) {
+        return false;
+      }
+      // Validate it any way you want. Here we only check that
+      // the fingerprint matches the OpenSSL SHA256.
+      return fingerprint == sha256.convert(cert.der).toString();
+    },
+  );
 }
 ```
 
@@ -811,12 +824,15 @@ Suppose the certificate format is PEM, the code like:
 ```dart
 void initAdapter() {
   String PEM = 'XXXXX'; // root certificate content
-  dio.httpClientAdapter = IOHttpClientAdapter()..onHttpClientCreate = (client) {
-    client.badCertificateCallback = (X509Certificate cert, String host, int port) {
-      return cert.pem == PEM; // Verify the certificate.
-    };
-    return client;
-  };
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    createHttpClient: () {
+      final client = HttpClient();
+      client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+        return cert.pem == PEM; // Verify the certificate.
+      };
+      return client;
+    },
+  );
 }
 ```
 
@@ -825,12 +841,14 @@ Another way is creating a `SecurityContext` when create the `HttpClient`:
 ```dart
 void initAdapter() {
   String PEM = 'XXXXX'; // root certificate content
-  dio.httpClientAdapter = IOHttpClientAdapter()..onHttpClientCreate = (_) {
-    final SecurityContext sc = SecurityContext();
-    sc.setTrustedCertificates(File(pathToTheCertificate));
-    final HttpClient client = HttpClient(context: sc);
-    return client;
-  };
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    onHttpClientCreate: (_) {
+      final SecurityContext sc = SecurityContext();
+      sc.setTrustedCertificates(File(pathToTheCertificate));
+      final HttpClient client = HttpClient(context: sc);
+      return client;
+    },
+  );
 }
 ```
 
@@ -851,10 +869,10 @@ When a token's `cancel()` is invoked, all requests with this token will be cance
 
 ```dart
 final cancelToken = CancelToken();
-dio.get(url, cancelToken: cancelToken).catchError((DioError err) {
+dio.get(url, cancelToken: cancelToken).catchError((DioException err) {
   if (CancelToken.isCancel(err)) {
-    print('Request canceled: ${err.message};);
-  } else{
+    print('Request canceled: ${err.message}');
+  } else {
     // handle error.
   }
 });
@@ -889,3 +907,16 @@ class MyDio with DioMixin implements Dio {
   // ...
 }
 ```
+
+## Cross-Origin Resource Sharing on Web (CORS)
+
+If a request is not a [simple request][],
+the Web browser will send a [CORS preflight request][]
+that checks to see if the CORS protocol is understood
+and a server is aware using specific methods and headers.
+
+You can modify your requests to match the definition of simple request,
+or add a CORS middleware for your service to handle CORS requests.
+
+[simple request]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#simple_requests
+[CORS preflight request]: https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request

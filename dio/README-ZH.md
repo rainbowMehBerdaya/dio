@@ -31,8 +31,8 @@ dio 是一个强大的 Dart HTTP 请求库，支持全局配置、Restful API、
       * [日志拦截器](#日志拦截器)
     * [自定义拦截器](#自定义拦截器)
   * [错误处理](#错误处理)
-    * [DioError](#dioerror)
-    * [DioErrorType](#dioerrortype)
+    * [DioException](#dioexception)
+    * [DioExceptionType](#dioexceptiontype)
   * [使用 application/x-www-form-urlencoded 编码](#使用-applicationx-www-form-urlencoded-编码)
   * [发送 FormData](#发送-formdata)
     * [多文件上传](#多文件上传)
@@ -46,6 +46,7 @@ dio 是一个强大的 Dart HTTP 请求库，支持全局配置、Restful API、
   * [HTTP/2 支持](#http2-支持)
   * [请求取消](#请求取消)
   * [继承 Dio class](#继承-dio-class)
+  * [Web 平台跨域资源共享 (CORS)](#web-平台跨域资源共享--cors-)
 <!-- TOC -->
 </details>
 
@@ -55,7 +56,7 @@ dio 是一个强大的 Dart HTTP 请求库，支持全局配置、Restful API、
 
 ### 添加依赖
 
-你可以使用一下命令将 dio 的最新稳定版依赖添加至你的项目：
+你可以使用以下命令将 dio 的最新稳定版依赖添加至你的项目：
 
 ```console
 $ dart pub add dio
@@ -98,7 +99,7 @@ void getHttp() async {
 | [native_dio_adapter](https://github.com/cfug/dio/blob/main/plugins/native_dio_adapter)                 | [![Pub](https://img.shields.io/pub/v/native_dio_adapter.svg)](https://pub.flutter-io.cn/packages/native_dio_adapter)                   | 使用 cupertino_http 和 cronet_http 以适配器代理实现的原生网络请求功能。 |
 | [dio_smart_retry](https://github.com/rodion-m/dio_smart_retry)                                         | [![Pub](https://img.shields.io/pub/v/dio_smart_retry.svg)](https://pub.flutter-io.cn/packages/dio_smart_retry)                         | 支持灵活地请求重试                                          |
 | [http_certificate_pinning](https://github.com/diefferson/http_certificate_pinning)                     | [![Pub](https://img.shields.io/pub/v/http_certificate_pinning.svg)](https://pub.flutter-io.cn/packages/http_certificate_pinning)       | 用于 Flutter 的 HTTPS 证书锁定                            |
-| [curl_logger_dio_interceptor](https://github.com/OwnWeb/curl_logger_dio_interceptor)                   | [![Pub](https://img.shields.io/pub/v/curl_logger_dio_interceptor.svg)](https://pub.flutter-io.cn/packages/curl_logger_dio_interceptor) | 用于 Flutter 的 CURL 命令生成器                            |
+| [dio_intercept_to_curl](https://github.com/blackflamedigital/dio_intercept_to_curl)                   | [![Pub](https://img.shields.io/pub/v/dio_intercept_to_curl.svg)](https://pub.flutter-io.cn/packages/dio_intercept_to_curl) | 用于 Flutter 的 CURL 命令生成器                            |
 | [dio_cache_interceptor](https://github.com/llfbandit/dio_cache_interceptor)                            | [![Pub](https://img.shields.io/pub/v/dio_cache_interceptor.svg)](https://pub.flutter-io.cn/packages/dio_cache_interceptor)             | 具有多个符合 HTTP 指令的 HTTP 缓存拦截器，                        |
 | [dio_http_cache](https://github.com/hurshi/dio-http-cache)                                             | [![Pub](https://img.shields.io/pub/v/dio_http_cache.svg)](https://pub.flutter-io.cn/packages/dio_http_cache)                           | 类似 Android 中的 RxCache 的缓存管理                        |
 | [pretty_dio_logger](https://github.com/Milad-Akarie/pretty_dio_logger)                                 | [![Pub](https://img.shields.io/pub/v/pretty_dio_logger.svg)](https://pub.flutter-io.cn/packages/pretty_dio_logger)                     | 基于拦截器的简明易读的请求日志打印                                  |
@@ -149,7 +150,7 @@ response = await Future.wait([dio.post('/info'), dio.get('/token')]);
 ```dart
 response = await dio.download(
   'https://www.google.com/',
-  (await getTemporaryDirectory()).path + 'google.html',
+  '${(await getTemporaryDirectory()).path}google.html',
 );
 ```
 
@@ -166,7 +167,7 @@ print(rs.data.stream); // 响应流
 以二进制数组的方式接收响应数据：
 
 ```dart
-final rs = await Dio().get<List<int>>(
+final rs = await dio.get(
   url,
   options: Options(responseType: ResponseType.bytes), // 设置接收类型为 `bytes`
 );
@@ -245,7 +246,7 @@ await dio.post(
 final dio = Dio(); // With default `Options`.
 
 void configureDio() {
-  // Set default configs
+  // Update default configs.
   dio.options.baseUrl = 'https://api.pub.dev';
   dio.options.connectTimeout = Duration(seconds: 5);
   dio.options.receiveTimeout = Duration(seconds: 3);
@@ -405,7 +406,7 @@ dio.interceptors.add(
       // 如果你想终止请求并触发一个错误，你可以使用 `handler.reject(error)`。
       return handler.next(response);
     },
-    onError: (DioError e, ErrorInterceptorHandler handler) {
+    onError: (DioException e, ErrorInterceptorHandler handler) {
       // 如果你想完成请求并返回一些自定义数据，你可以使用 `handler.resolve(response)`。
       return handler.next(e);
     },
@@ -431,7 +432,7 @@ class CustomInterceptors extends Interceptor {
   }
 
   @override
-  Future onError(DioError err, ErrorInterceptorHandler handler) {
+  Future onError(DioException err, ErrorInterceptorHandler handler) async {
     print('ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
     super.onError(err, handler);
   }
@@ -444,7 +445,7 @@ class CustomInterceptors extends Interceptor {
 如果你想完成请求/响应并返回自定义数据，你可以 resolve 一个 `Response` 对象
 或返回 `handler.resolve(data)` 的结果。
 如果你想终止（触发一个错误，上层 `catchError` 会被调用）一个请求/响应，
-那么可以 reject 一个`DioError` 对象或返回 `handler.reject(errMsg)` 的结果。
+那么可以 reject 一个`DioException` 对象或返回 `handler.reject(errMsg)` 的结果。
 
 ```dart
 dio.interceptors.add(
@@ -484,7 +485,9 @@ print(response.data); // 'fake data'
 dio.interceptors.add(LogInterceptor(responseBody: false)); // 不输出响应内容体
 ```
 
-注意：由于拦截器队列是先进先出，`LogInterceptor` 应当在最后添加至 `Dio` 实例。
+**注意：** 由于拦截器队列是先进先出，`LogInterceptor` 应当在最后添加至 `Dio` 实例。
+
+**注意：** 日志默认仅在 DEBUG 模式（启用了断言）下打印。
 
 ### 自定义拦截器
 
@@ -493,13 +496,13 @@ dio.interceptors.add(LogInterceptor(responseBody: false)); // 不输出响应内
 
 ## 错误处理
 
-当请求过程中发生错误时, Dio 会将 `Error/Exception` 包装成一个 `DioError`:
+当请求过程中发生错误时, Dio 会将 `Error/Exception` 包装成一个 `DioException`:
 
 ```dart
 try {
   // 404
   await dio.get('https://api.pub.dev/not-exist');
-} on DioError catch (e) {
+} on DioException catch (e) {
   // The request was made and the server responded with a status code
   // that falls out of the range of 2xx and is also not 304.
   if (e.response != null) {
@@ -514,7 +517,7 @@ try {
 }
 ```
 
-### DioError
+### DioException
 
 ```dart
 /// 错误的请求对应的配置。
@@ -524,7 +527,7 @@ RequestOptions requestOptions;
 Response? response;
 
 /// 错误的类型。
-DioErrorType type;
+DioExceptionType type;
 
 /// 实际错误的内容。
 Object? error;
@@ -536,9 +539,9 @@ StackTrace? stackTrace;
 String? message;
 ```
 
-### DioErrorType
+### DioExceptionType
 
-见 [源码](lib/src/dio_error.dart)。
+见 [源码](lib/src/dio_exception.dart)。
 
 ## 使用 application/x-www-form-urlencoded 编码
 
@@ -695,26 +698,29 @@ dio.httpClientAdapter = HttpClientAdapter();
 
 ### 设置代理
 
-`IOHttpClientAdapter` 提供了一个 `onHttpClientCreate` 回调来设置底层 `HttpClient` 的代理：
+`IOHttpClientAdapter` 提供了一个 `createHttpClient` 回调来设置底层 `HttpClient` 的代理：
 
 ```dart
 import 'package:dio/io.dart';
 
 void initAdapter() {
-  dio.httpClientAdapter = IOHttpClientAdapter()..onHttpClientCreate = (client) {
-    // Config the client.
-    client.findProxy = (uri) {
-      // Forward all request to proxy "localhost:8888".
-      return 'PROXY localhost:8888';
-    };
-    // You can also create a new HttpClient for Dio instead of returning,
-    // but a client must being returned here.
-    return client;
-  };
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    createHttpClient: () {
+      final client = HttpClient();
+      client.findProxy = (uri) {
+        // 将请求代理至 localhost:8888。
+        // 请注意，代理会在你正在运行应用的设备上生效，而不是在宿主平台生效。
+        return 'PROXY localhost:8888';
+      };
+      return client;
+    },
+  );
 }
 ```
 
 完整的示例请查看 [这里](../example/lib/proxy.dart)。
+
+Web 平台不支持设置代理。
 
 ### HTTPS 证书校验
 
@@ -728,22 +734,25 @@ HTTPS 证书验证（或公钥固定）是指确保端侧与服务器的 TLS 连
 ```dart
 void initAdapter() {
   const String fingerprint = 'ee5ce1dfa7a53657c545c62b65802e4272878dabd65c0aadcf85783ebb0b4d5c';
-  dio.httpClientAdapter = IOHttpClientAdapter()..onHttpClientCreate = (_) {
-    // Don't trust any certificate just because their root cert is trusted.
-    final HttpClient client = HttpClient(context: SecurityContext(withTrustedRoots: false));
-    // You can test the intermediate / root cert here. We just ignore it.
-    client.badCertificateCallback = (cert, host, port) => true;
-    return client;
-  }..validateCertificate = (cert, host, port) {
-    // Check that the cert fingerprint matches the one we expect.
-    // We definitely require _some_ certificate.
-    if (cert == null) {
-      return false;
-    }
-    // Validate it any way you want. Here we only check that
-    // the fingerprint matches the OpenSSL SHA256.
-    return fingerprint == sha256.convert(cert.der).toString();
-  };
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    onHttpClientCreate: (_) {
+      // Don't trust any certificate just because their root cert is trusted.
+      final HttpClient client = HttpClient(context: SecurityContext(withTrustedRoots: false));
+      // You can test the intermediate / root cert here. We just ignore it.
+      client.badCertificateCallback = (cert, host, port) => true;
+      return client;
+    },
+    validateCertificate: (cert, host, port) {
+      // Check that the cert fingerprint matches the one we expect.
+      // We definitely require _some_ certificate.
+      if (cert == null) {
+        return false;
+      }
+      // Validate it any way you want. Here we only check that
+      // the fingerprint matches the OpenSSL SHA256.
+      return fingerprint == sha256.convert(cert.der).toString();
+    },
+  );
 }
 ```
 
@@ -767,12 +776,15 @@ openssl s_client -servername pinning-test.badssl.com -connect pinning-test.badss
 ```dart
 void initAdapter() {
   String PEM = 'XXXXX'; // root certificate content
-  dio.httpClientAdapter = IOHttpClientAdapter()..onHttpClientCreate = (client) {
-    client.badCertificateCallback = (X509Certificate cert, String host, int port) {
-      return cert.pem == PEM; // Verify the certificate.
-    };
-    return client;
-  };
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    createHttpClient: () {
+      final client = HttpClient();
+      client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+        return cert.pem == PEM; // Verify the certificate.
+      };
+      return client;
+    },
+  );
 }
 ```
 
@@ -782,12 +794,14 @@ void initAdapter() {
 ```dart
 void initAdapter() {
   String PEM = 'XXXXX'; // root certificate content
-  dio.httpClientAdapter = IOHttpClientAdapter()..onHttpClientCreate = (_) {
-    final SecurityContext sc = SecurityContext();
-    sc.setTrustedCertificates(File(pathToTheCertificate));
-    final HttpClient client = HttpClient(context: sc);
-    return client;
-  };
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    onHttpClientCreate: (_) {
+      final SecurityContext sc = SecurityContext();
+      sc.setTrustedCertificates(File(pathToTheCertificate));
+      final HttpClient client = HttpClient(context: sc);
+      return client;
+    },
+  );
 }
 ```
 
@@ -807,10 +821,10 @@ void initAdapter() {
 
 ```dart
 final cancelToken = CancelToken();
-dio.get(url, cancelToken: cancelToken).catchError((DioError err) {
+dio.get(url, cancelToken: cancelToken).catchError((DioException err) {
   if (CancelToken.isCancel(err)) {
-    print('Request canceled: ${err.message};);
-  } else{
+    print('Request canceled: ${err.message}');
+  } else {
     // handle error.
   }
 });
@@ -844,3 +858,14 @@ class MyDio with DioMixin implements Dio {
   // ...
 }
 ```
+
+## Web 平台跨域资源共享 (CORS)
+
+在 Web 平台上发送网络请求时，如果请求不是一个 [简单请求][]，
+浏览器会自动向服务器发送 [CORS 预检][] (Pre-flight requests)，
+用于检查服务器是否支持跨域资源共享。
+
+你可以参考简单请求的定义修改你的请求，或者为你的服务加上 CORS 中间件进行跨域处理。
+
+[简单请求]: https://developer.mozilla.org/zh-CN/docs/Web/HTTP/CORS#%E7%AE%80%E5%8D%95%E8%AF%B7%E6%B1%82
+[CORS 预检]: https://developer.mozilla.org/zh-CN/docs/Glossary/Preflight_request

@@ -66,7 +66,7 @@ String encodeMap(
         for (int i = 0; i < sub.length; i++) {
           final isCollection =
               sub[i] is Map || sub[i] is List || sub[i] is ListParam;
-          if (listFormat == ListFormat.multi) {
+          if (format == ListFormat.multi) {
             urlEncode(
               maybeEncode(sub[i]),
               '$path${isCollection ? '$leftBracket$i$rightBracket' : ''}',
@@ -82,7 +82,7 @@ String encodeMap(
       } else {
         urlEncode(sub.map(maybeEncode).join(separatorChar), path);
       }
-    } else if (sub is Map<String, dynamic>) {
+    } else if (sub is Map) {
       sub.forEach((k, v) {
         if (path == '') {
           urlEncode(maybeEncode(v), '${encodeComponent(k)}');
