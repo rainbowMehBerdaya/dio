@@ -542,7 +542,7 @@ abstract class DioMixin implements Dio {
       final stream = await _transformData(reqOpt);
 
       final stopwatch = Stopwatch()..start();
-      responseBody = await httpClientAdapter.fetch(
+      final responseBody = await httpClientAdapter.fetch(
         reqOpt,
         stream,
         cancelToken?.whenCancel,
@@ -561,7 +561,19 @@ abstract class DioMixin implements Dio {
       );
       final statusOk = reqOpt.validateStatus(responseBody.statusCode);
       if (statusOk || reqOpt.receiveDataWhenStatusError == true) {
-        ret.data = await transformer.transformResponse(reqOpt, responseBody);
+        Object? data = await transformer.transformResponse(
+          reqOpt,
+          responseBody,
+        );
+        // Make the response as null before returned as JSON.
+        if (data is String &&
+            data.isEmpty &&
+            T != dynamic &&
+            T != String &&
+            reqOpt.responseType == ResponseType.json) {
+          data = null;
+        }
+        ret.data = data;
       } else {
         await responseBody.stream.listen(null).cancel();
       }
@@ -647,14 +659,21 @@ abstract class DioMixin implements Dio {
         options.headers[Headers.contentLengthHeader] = length.toString();
       } else {
         final List<int> bytes;
-        // Call request transformer.
-        final data = await transformer.transformRequest(options);
-        if (options.requestEncoder != null) {
-          bytes = options.requestEncoder!(data, options);
+
+        if (data is Uint8List) {
+          // Handle binary data which does not need to be transformed
+          bytes = data;
         } else {
-          //Default convert to utf8
-          bytes = utf8.encode(data);
+          // Call request transformer for anything else
+          final transformed = await transformer.transformRequest(options);
+          if (options.requestEncoder != null) {
+            bytes = options.requestEncoder!(transformed, options);
+          } else {
+            // Default convert to utf8
+            bytes = utf8.encode(transformed);
+          }
         }
+
         // support data sending progress
         length = bytes.length;
         options.headers[Headers.contentLengthHeader] = length.toString();

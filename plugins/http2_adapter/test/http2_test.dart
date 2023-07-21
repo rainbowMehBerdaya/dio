@@ -26,7 +26,7 @@ void main() {
 
   test('request with payload', () async {
     final dio = Dio()
-      ..options.baseUrl = 'https://httpbin.org/'
+      ..options.baseUrl = 'https://httpbun.com/'
       ..httpClientAdapter = Http2Adapter(
         ConnectionManager(
           idleTimeout: Duration(milliseconds: 10),
@@ -39,13 +39,40 @@ void main() {
 
   test('request with payload via proxy', () async {
     final dio = Dio()
-      ..options.baseUrl = 'https://httpbin.org/'
+      ..options.baseUrl = 'https://httpbun.com/'
       ..httpClientAdapter = Http2Adapter(ConnectionManager(
         idleTimeout: Duration(milliseconds: 10),
         onClientCreate: (uri, settings) =>
             settings.proxy = Uri.parse('http://localhost:3128'),
       ));
 
+    final res = await dio.post('post', data: 'TEST');
+    expect(res.data.toString(), contains('TEST'));
+  });
+
+  test('request without network and restore', () async {
+    bool needProxy = true;
+    final dio = Dio()
+      ..options.baseUrl = 'https://httpbun.com/'
+      ..httpClientAdapter = Http2Adapter(ConnectionManager(
+        idleTimeout: Duration(milliseconds: 10),
+        onClientCreate: (uri, settings) {
+          if (needProxy) {
+            // first request use bad proxy to simulate network error
+            settings.proxy = Uri.parse('http://localhost:1234');
+            needProxy = false;
+          } else {
+            // remove proxy to restore network
+            settings.proxy = null;
+          }
+        },
+      ));
+    try {
+      // will throw SocketException
+      await dio.post('post', data: 'TEST');
+    } on DioException {
+      // ignore
+    }
     final res = await dio.post('post', data: 'TEST');
     expect(res.data.toString(), contains('TEST'));
   });

@@ -7,7 +7,8 @@ import 'package:dio_http2_adapter/dio_http2_adapter.dart';
 import 'package:test/test.dart';
 
 void main() {
-  // NOTE: Run test.sh to download the current certs to the file below.
+  // NOTE: Run scripts/prepare_pinning_certs.sh
+  // to download the current certs to the file below.
   //
   // OpenSSL output like: SHA256 Fingerprint=EE:5C:E1:DF:A7:A4...
   // All badssl.com hosts have the same cert, they just have TLS
@@ -18,7 +19,7 @@ void main() {
 
   group('SSL pinning', () {
     final Dio dio = Dio()
-      ..options.baseUrl = 'https://httpbin.org/'
+      ..options.baseUrl = 'https://httpbun.com/'
       ..interceptors.add(
         QueuedInterceptorsWrapper(
           onRequest: (options, handler) async {
@@ -28,8 +29,7 @@ void main() {
           },
         ),
       );
-    final baseHost = 'httpbin.org';
-    final expectedHostString = 'Host: $baseHost';
+    final expectedHostString = 'httpbun.com';
 
     test('trusted host allowed with no approver', () async {
       dio.httpClientAdapter = Http2Adapter(
@@ -146,10 +146,10 @@ void main() {
       expect(badCert, true);
       expect(approved, true);
       expect(badCertSubject, isNotNull);
-      expect(badCertSubject, isNot(contains(baseHost)));
+      expect(badCertSubject, isNot(contains(expectedHostString)));
       expect(badCertSha256, isNot(fingerprint));
       expect(approverSubject, isNotNull);
-      expect(approverSubject, contains(baseHost));
+      expect(approverSubject, contains(expectedHostString));
       expect(approverSha256, fingerprint);
       expect(approverSubject, isNot(badCertSubject));
       expect(approverSha256, isNot(badCertSha256));

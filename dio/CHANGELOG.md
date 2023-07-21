@@ -1,12 +1,40 @@
 # CHANGELOG
 
+**Before you upgrade: Breaking changes might happen in major and minor versions of packages.<br/>
+See the [Migration Guide][] for the complete breaking changes list.**
+
 ## Unreleased
+
+*None.*
+
+## 5.3.0
+
+- Remove `http` from `dev_dependencies`.
+- Add support for cloning `MultipartFile` from `FormData`.
+- Only produce null response body when `ResponseType.json`.
+
+## 5.2.1+1
+
+- Fix changelog on pub.dev.
+
+## 5.2.1
+
+- Revert changes to handling of `List<int>` body data.
+
+## 5.2.0+1
+
+- Fix `DioErrorType` deprecation hint.
+
+## 5.2.0
 
 - Make `LogInterceptor` prints in DEBUG mode (when the assertion is enabled) by default.
 - Deprecate `DioError` in favor of `DioException`.
 - Fix `IOHttpClientAdapter.onHttpClientCreate` Repeated calls
 - `IOHttpClientAdapter.onHttpClientCreate` has been deprecated and is scheduled for removal in
   Dio 6.0.0 - Please use the replacement `IOHttpClientAdapter.createHttpClient` instead.
+- Using `CancelToken` no longer closes and re-creates `HttpClient` for each request when `IOHttpClientAdapter` is used.
+- Fix timeout handling for browser `receiveTimeout`.
+- Improve performance when sending binary data (`List<int>`/`Uint8List`).
 
 ## 5.1.2
 
@@ -323,3 +351,5 @@ First Stable version for 2.x
 ## 0.0.1
 
 - Initial version, created by Stagehand
+
+[Migration Guide]: ./migration_guide.md

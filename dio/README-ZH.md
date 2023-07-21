@@ -52,8 +52,6 @@ dio 是一个强大的 Dart HTTP 请求库，支持全局配置、Restful API、
 
 ## 开始使用
 
-> 查看 [迁移指南](migration_guide.md) 以了解各个版本之间的重大变更。
-
 ### 添加依赖
 
 你可以使用以下命令将 dio 的最新稳定版依赖添加至你的项目：
@@ -71,6 +69,9 @@ dependencies:
 
 最新稳定版本为：![Pub](https://img.shields.io/pub/v/dio.svg)
 最新包含开发版的版本为：![Pub](https://img.shields.io/pub/v/dio?include_prereleases)
+
+**在你更新之前：大版本和次要版本可能会包含不兼容的重大改动。<br/>
+请阅读 [迁移指南][] 了解完整的重大变更内容。**
 
 ## 一个极简的示例
 
@@ -735,7 +736,7 @@ HTTPS 证书验证（或公钥固定）是指确保端侧与服务器的 TLS 连
 void initAdapter() {
   const String fingerprint = 'ee5ce1dfa7a53657c545c62b65802e4272878dabd65c0aadcf85783ebb0b4d5c';
   dio.httpClientAdapter = IOHttpClientAdapter(
-    onHttpClientCreate: (_) {
+    createHttpClient: () {
       // Don't trust any certificate just because their root cert is trusted.
       final HttpClient client = HttpClient(context: SecurityContext(withTrustedRoots: false));
       // You can test the intermediate / root cert here. We just ignore it.
@@ -867,5 +868,6 @@ class MyDio with DioMixin implements Dio {
 
 你可以参考简单请求的定义修改你的请求，或者为你的服务加上 CORS 中间件进行跨域处理。
 
+[迁移指南]: ./migration_guide.md
 [简单请求]: https://developer.mozilla.org/zh-CN/docs/Web/HTTP/CORS#%E7%AE%80%E5%8D%95%E8%AF%B7%E6%B1%82
 [CORS 预检]: https://developer.mozilla.org/zh-CN/docs/Glossary/Preflight_request
