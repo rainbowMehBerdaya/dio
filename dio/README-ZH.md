@@ -5,8 +5,8 @@
 
 文档语言： 简体中文 | [English](README.md)
 
-dio 是一个强大的 Dart HTTP 请求库，支持全局配置、Restful API、FormData、拦截器、
-请求取消、Cookie 管理、文件上传/下载、超时以及自定义适配器等。
+dio 是一个强大的 HTTP 网络请求库，支持全局配置、Restful API、FormData、拦截器、
+请求取消、Cookie 管理、文件上传/下载、超时、自定义适配器、转换器等。
 
 <details>
   <summary>内容列表</summary>
@@ -46,7 +46,7 @@ dio 是一个强大的 Dart HTTP 请求库，支持全局配置、Restful API、
   * [HTTP/2 支持](#http2-支持)
   * [请求取消](#请求取消)
   * [继承 Dio class](#继承-dio-class)
-  * [Web 平台跨域资源共享 (CORS)](#web-平台跨域资源共享--cors-)
+  * [Web 平台跨域资源共享 (CORS)](#web-平台跨域资源共享-cors)
 <!-- TOC -->
 </details>
 
@@ -54,21 +54,7 @@ dio 是一个强大的 Dart HTTP 请求库，支持全局配置、Restful API、
 
 ### 添加依赖
 
-你可以使用以下命令将 dio 的最新稳定版依赖添加至你的项目：
-
-```console
-$ dart pub add dio
-```
-
-你也可以手动将 dio 添加至 pubspec.yaml：
-
-```yaml
-dependencies:
-  dio: ^替换为最新版本
-```
-
-最新稳定版本为：![Pub](https://img.shields.io/pub/v/dio.svg)
-最新包含开发版的版本为：![Pub](https://img.shields.io/pub/v/dio?include_prereleases)
+依照文档将 `dio` 包添加为 [pubspec 的依赖](https://pub.flutter-io.cn/packages/dio/install)。
 
 **在你更新之前：大版本和次要版本可能会包含不兼容的重大改动。<br/>
 请阅读 [迁移指南][] 了解完整的重大变更内容。**
@@ -106,6 +92,7 @@ void getHttp() async {
 | [pretty_dio_logger](https://github.com/Milad-Akarie/pretty_dio_logger)                                 | [![Pub](https://img.shields.io/pub/v/pretty_dio_logger.svg)](https://pub.flutter-io.cn/packages/pretty_dio_logger)                     | 基于拦截器的简明易读的请求日志打印                                  |
 | [dio_image_provider](https://github.com/ueman/image_provider)                                          | [![Pub](https://img.shields.io/pub/v/dio_image_provider.svg)](https://pub.flutter-io.cn/packages/dio_image_provider)                   | 基于 Dio 的图片加载                                       |
 | [flutter_ume_kit_dio](https://github.com/cfug/flutter_ume_kits/tree/main/packages/flutter_ume_kit_dio) | [![Pub](https://img.shields.io/pub/v/flutter_ume_kit_dio.svg)](https://pub.flutter-io.cn/packages/flutter_ume_kit_dio)                 | flutter_ume 上的 dio 调试插件                            |
+| [talker_dio_logger](https://github.com/Frezyx/talker/tree/master/packages/talker_dio_logger) | [![Pub](https://img.shields.io/pub/v/talker_dio_logger.svg)](https://pub.dev/packages/talker_dio_logger)                 | 基于 talker 的轻量级和可定制的 dio 记录器                                                                                   |
 
 ### 相关的项目
 
@@ -388,6 +375,8 @@ print(response.headers);
 print(response.requestOptions);
 print(response.statusCode);
 ```
+
+注意，`Response.extra` 与 `RequestOptions.extra` 是不同的实例，互相之间无关。
 
 ### 拦截器
 

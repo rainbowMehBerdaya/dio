@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:test/test.dart';
 
 /// The current server instance.
@@ -96,9 +98,7 @@ Future<void> startServer() async {
           ..contentLength = content.length
           ..write(content);
 
-        Future.delayed(Duration(milliseconds: 300), () {
-          response.close();
-        });
+        Future.delayed(Duration(milliseconds: 300), () => response.close());
         return;
       }
 
@@ -156,6 +156,14 @@ void stopServer() {
 /// A matcher for functions that throw SocketException.
 final Matcher throwsSocketException =
     throwsA(const TypeMatcher<SocketException>());
+
+/// A matcher for functions that throw DioException of type connectionError.
+final Matcher throwsDioExceptionConnectionError = throwsA(
+  allOf([
+    isA<DioException>(),
+    (DioException e) => e.type == DioExceptionType.connectionError,
+  ]),
+);
 
 /// A stream of chunks of bytes representing a single piece of data.
 class ByteStream extends StreamView<List<int>> {

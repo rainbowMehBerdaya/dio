@@ -5,9 +5,10 @@
 
 Language: English | [简体中文](README-ZH.md)
 
-A powerful HTTP client for Dart/Flutter, which supports global configuration,
-interceptors, FormData, request cancellation, file uploading/downloading,
-timeout, and custom adapters etc. 
+A powerful HTTP networking package for Dart/Flutter,
+supports Global configuration, Interceptors, FormData,
+Request cancellation, File uploading/downloading,
+Timeout, Custom adapters, Transformers, etc. 
 
 <details>
   <summary>Table of content</summary>
@@ -37,7 +38,7 @@ timeout, and custom adapters etc.
   * [Using application/x-www-form-urlencoded format](#using-applicationx-www-form-urlencoded-format)
   * [Sending FormData](#sending-formdata)
     * [Multiple files upload](#multiple-files-upload)
-    * [Reuse `FormData`s and `MultipartFile`s](#reuse-formdata-s-and-multipartfile-s)
+    * [Reuse `FormData`s and `MultipartFile`s](#reuse-formdatas-and-multipartfiles)
   * [Transformer](#transformer)
     * [In Flutter](#in-flutter)
     * [Other example](#other-example)
@@ -47,32 +48,19 @@ timeout, and custom adapters etc.
   * [HTTP/2 support](#http2-support)
   * [Cancellation](#cancellation)
   * [Extends Dio class](#extends-dio-class)
-  * [Cross-Origin Resource Sharing on Web (CORS)](#cross-origin-resource-sharing-on-web--cors-)
+  * [Cross-Origin Resource Sharing on Web (CORS)](#cross-origin-resource-sharing-on-web-cors)
 <!-- TOC -->
 </details>
 
 ## Get started
 
-### Add dependency
+### Install
 
-You can use the command to add dio as a dependency with the latest stable version:
+Add the `dio` package to your [pubspec dependencies](https://pub.dev/packages/dio/install).
 
-```console
-$ dart pub add dio
-```
-
-Or you can manually add dio into the dependencies section in your pubspec.yaml:
-
-```yaml
-dependencies:
-  dio: ^replace-with-latest-version
-```
-
-The latest version is: ![Pub](https://img.shields.io/pub/v/dio.svg)
-The latest version including pre-releases is: ![Pub](https://img.shields.io/pub/v/dio?include_prereleases)
 
 **Before you upgrade: Breaking changes might happen in major and minor versions of packages.<br/>
-See the [Migration Guide][] for the complete breaking changes list.**
+See the [Migration Guide](https://pub.dev/documentation/dio/latest/topics/Migration%20Guide-topic.html) for the complete breaking changes list.**
 
 ### Super simple to use
 
@@ -93,22 +81,7 @@ void getHttp() async {
 
 ### Plugins
 
-<!-- Use https://pub.dev for the hosted URL. -->
-| Repository                                                                                             | Status                                                                                                                       | Description                                                                                                            |
-|--------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| [dio_cookie_manager](https://github.com/cfug/dio/blob/main/plugins/cookie_manager)                     | [![Pub](https://img.shields.io/pub/v/dio_cookie_manager.svg)](https://pub.dev/packages/dio_cookie_manager)                   | A cookie manager for Dio                                                                                               |
-| [dio_http2_adapter](https://github.com/cfug/dio/blob/main/plugins/http2_adapter)                       | [![Pub](https://img.shields.io/pub/v/dio_http2_adapter.svg)](https://pub.dev/packages/dio_http2_adapter)                     | A Dio HttpClientAdapter which support Http/2.0                                                                         |
-| [native_dio_adapter](https://github.com/cfug/dio/blob/main/plugins/native_dio_adapter)                 | [![Pub](https://img.shields.io/pub/v/native_dio_adapter.svg)](https://pub.dev/packages/native_dio_adapter)                   | An adapter for Dio which makes use of cupertino_http and cronet_http to delegate HTTP requests to the native platform. |
-| [dio_smart_retry](https://github.com/rodion-m/dio_smart_retry)                                         | [![Pub](https://img.shields.io/pub/v/dio_smart_retry.svg)](https://pub.dev/packages/dio_smart_retry)                         | Flexible retry library for Dio                                                                                         |
-| [http_certificate_pinning](https://github.com/diefferson/http_certificate_pinning)                     | [![Pub](https://img.shields.io/pub/v/http_certificate_pinning.svg)](https://pub.dev/packages/http_certificate_pinning)       | Https Certificate pinning for Flutter                                                                                  |
-| [dio_intercept_to_curl](https://github.com/blackflamedigital/dio_intercept_to_curl)                   | [![Pub](https://img.shields.io/pub/v/dio_intercept_to_curl.svg)](https://pub.dev/packages/dio_intercept_to_curl) | A Flutter curl-command generator for Dio.                                                                              |
-| [dio_cache_interceptor](https://github.com/llfbandit/dio_cache_interceptor)                            | [![Pub](https://img.shields.io/pub/v/dio_cache_interceptor.svg)](https://pub.dev/packages/dio_cache_interceptor)             | Dio HTTP cache interceptor with multiple stores respecting HTTP directives (or not)                                    |
-| [dio_http_cache](https://github.com/hurshi/dio-http-cache)                                             | [![Pub](https://img.shields.io/pub/v/dio_http_cache.svg)](https://pub.dev/packages/dio_http_cache)                           | A simple cache library for Dio like Rxcache in Android                                                                 |
-| [pretty_dio_logger](https://github.com/Milad-Akarie/pretty_dio_logger)                                 | [![Pub](https://img.shields.io/pub/v/pretty_dio_logger.svg)](https://pub.dev/packages/pretty_dio_logger)                     | Pretty Dio logger is a Dio interceptor that logs network calls in a pretty, easy to read format.                       |
-| [dio_image_provider](https://github.com/ueman/image_provider)                                          | [![Pub](https://img.shields.io/pub/v/dio_image_provider.svg)](https://pub.dev/packages/dio_image_provider)                   | An image provider which makes use of package:dio to instead of dart:io                                                 |
-| [flutter_ume_kit_dio](https://github.com/cfug/flutter_ume_kits/tree/main/packages/flutter_ume_kit_dio) | [![Pub](https://img.shields.io/pub/v/flutter_ume_kit_dio.svg)](https://pub.dev/packages/flutter_ume_kit_dio)                 | A debug kit of dio on flutter_ume                                                                                      |
-
-### Related Projects
+[Plugins](https://pub.dev/documentation/dio/latest/topics/Plugins-topic.html)
 
 Welcome to submit third-party plugins and related libraries
 in [here](https://github.com/cfug/dio/issues/347).
@@ -345,8 +318,8 @@ ResponseType? responseType;
 /// the request will be perceived as successful; otherwise, considered as failed.
 ValidateStatus? validateStatus;
 
-/// Custom field that you can retrieve it later in
-/// [Interceptor], [Transformer] and the [Response] object.
+/// Custom field that you can retrieve it later in [Interceptor],
+/// [Transformer] and the [Response.requestOptions] object.
 Map<String, dynamic>? extra;
 
 /// Common query parameters.
@@ -391,7 +364,7 @@ bool isRedirect;
 /// implementation of the adapter supports it or not.
 List<RedirectRecord> redirects;
 
-/// Custom fields that are constructed in the [RequestOptions].
+/// Custom fields that only for the [Response].
 Map<String, dynamic> extra;
 
 /// Response headers.
@@ -407,6 +380,9 @@ print(response.headers);
 print(response.requestOptions);
 print(response.statusCode);
 ```
+
+Be aware, the `Response.extra` is different from `RequestOptions.extra`,
+they are not related to each other.
 
 ### Interceptors
 
@@ -919,6 +895,5 @@ and a server is aware using specific methods and headers.
 You can modify your requests to match the definition of simple request,
 or add a CORS middleware for your service to handle CORS requests.
 
-[Migration Guide]: ./migration_guide.md
 [simple request]: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#simple_requests
 [CORS preflight request]: https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
